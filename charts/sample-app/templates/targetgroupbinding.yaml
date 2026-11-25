@@ -1,0 +1,18 @@
+{{- if not .Values.targetGroupBinding.targetGroupArn }}
+{{- fail "targetGroupBinding.targetGroupArn must be set (workloads-edge alb_target_group_arn or workloads-lattice alb_target_group_arns)" }}
+{{- end }}
+{{- $name := include "sample-app.name" . -}}
+# Registers the pods behind this Service into the Terraform-managed ALB target group (IP targets).
+# networking is omitted: Terraform owns the security group rules (ALB -> nodes on the app port).
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+spec:
+  targetGroupARN: {{ .Values.targetGroupBinding.targetGroupArn }}
+  targetType: ip
+  serviceRef:
+    name: {{ $name }}
+    port: https

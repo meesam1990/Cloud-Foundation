@@ -1,0 +1,11 @@
+{{- if .Values.latticeCaBundle }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sample-app.name" . }}-lattice-ca
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+data:
+  ca.crt: |
+    {{- .Values.latticeCaBundle | nindent 4 }}
+{{- end }}

@@ -1,0 +1,91 @@
+#!/bin/bash
+# Test stand-in for the vendor firewall, built on the AWS GWLB tunnel handler (gwlbtun,
+# github.com/aws-samples/aws-gateway-load-balancer-tunnel-handler). gwlbtun decapsulates GENEVE
+# into a gwi-<X>/gwo-<X> interface pair per GWLB endpoint and calls the hook below for each one.
+#
+#   egress endpoints (internet inspection VPC, HTML hops o4c-o5): two-arm NAT. The traffic leaves
+#     through this instance's own interface (masqueraded) to the NAT gateway, like the vendor
+#     firewall opening its own session to the provider. Replies are un-NATed and sent back to GWLB
+#     through the endpoint's gwo- interface.
+#   every other endpoint (apps VPC ingress, hops 2b-2c): pass-through, straight back to GWLB.
+#
+# tcpdump is installed so the tests can prove traffic reached this hop.
+set -euxo pipefail
+
+dnf install -y gcc gcc-c++ cmake make git iptables-nft iproute-tc tcpdump
+
+# The C++ build needs more memory than a small instance has.
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+fi
+
+rm -rf /opt/gwlbtun-src
+git clone --depth 1 --branch "${gwlbtun_version}" https://github.com/aws-samples/aws-gateway-load-balancer-tunnel-handler.git /opt/gwlbtun-src
+cd /opt/gwlbtun-src
+cmake .
+make
+install -m 0755 gwlbtun /usr/local/sbin/gwlbtun
+
+cat > /usr/local/sbin/gwlbtun-hook.sh <<'SCRIPT'
+#!/bin/bash
+# gwlbtun hook: $1 CREATE|DESTROY, $2 gwi-<X>, $3 gwo-<X>, $4 endpoint ID (hex, no "vpce-").
+set -u
+MODE="$1"; IN="$2"; OUT="$3"; ENDPOINT="$4"
+NAT_ENDPOINTS="${nat_endpoint_ids}"
+OUTINT=$(ip route show default | awk '{print $5; exit}')
+
+sysctl -qw net.ipv4.ip_forward=1 net.ipv4.conf.all.rp_filter=0 "net.ipv4.conf.$IN.rp_filter=0"
+sysctl -qw "net.ipv6.conf.$IN.router_solicitations=0" "net.ipv6.conf.$OUT.router_solicitations=0" || true
+
+if ! printf '%s\n' $NAT_ENDPOINTS | grep -qx "$ENDPOINT"; then
+  echo "vpce-$ENDPOINT: pass-through ($IN -> $OUT)"
+  if [ "$MODE" = "CREATE" ]; then
+    tc qdisc add dev "$IN" ingress
+    tc filter add dev "$IN" parent ffff: protocol all prio 2 u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev "$OUT"
+  fi
+  exit 0
+fi
+
+# Connections arriving on gwi- are marked; replies with the mark are routed to gwo- (back to GWLB).
+MARK=$((1000 + $(cat "/sys/class/net/$OUT/ifindex")))
+
+if [ "$MODE" = "CREATE" ]; then
+  echo "vpce-$ENDPOINT: two-arm NAT out of $OUTINT (mark $MARK)"
+  iptables -t nat -C POSTROUTING -o "$OUTINT" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o "$OUTINT" -j MASQUERADE
+  iptables -C FORWARD -i "$IN" -o "$OUTINT" -j ACCEPT 2>/dev/null || iptables -A FORWARD -i "$IN" -o "$OUTINT" -j ACCEPT
+  iptables -t mangle -A PREROUTING -i "$IN" -j CONNMARK --set-mark "$MARK"
+  iptables -t mangle -C PREROUTING -i "$OUTINT" -j CONNMARK --restore-mark 2>/dev/null || iptables -t mangle -A PREROUTING -i "$OUTINT" -j CONNMARK --restore-mark
+  iptables -A FORWARD -i "$OUTINT" -o "$OUT" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+  ip route replace default dev "$OUT" table "$MARK"
+  ip rule add fwmark "$MARK" table "$MARK"
+else
+  echo "vpce-$ENDPOINT: removing NAT (mark $MARK)"
+  iptables -D FORWARD -i "$IN" -o "$OUTINT" -j ACCEPT || true
+  iptables -t mangle -D PREROUTING -i "$IN" -j CONNMARK --set-mark "$MARK" || true
+  iptables -D FORWARD -i "$OUTINT" -o "$OUT" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT || true
+  ip rule del fwmark "$MARK" table "$MARK" || true
+  ip route flush table "$MARK" || true
+fi
+SCRIPT
+chmod 0755 /usr/local/sbin/gwlbtun-hook.sh
+
+# gwlbtun also answers the GWLB health check on health_check_port.
+cat > /etc/systemd/system/gwlbtun.service <<'UNIT'
+[Unit]
+Description=AWS GWLB tunnel handler (firewall stand-in)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/sbin/gwlbtun -c /usr/local/sbin/gwlbtun-hook.sh -r /usr/local/sbin/gwlbtun-hook.sh -p ${health_check_port}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now gwlbtun.service

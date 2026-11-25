@@ -1,0 +1,27 @@
+{{- $name := include "sample-app.name" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-nginx
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    server {
+      listen {{ .Values.containerPort }} ssl;
+      http2 on;
+      ssl_certificate     /etc/nginx/tls/tls.crt;
+      ssl_certificate_key /etc/nginx/tls/tls.key;
+      ssl_protocols       TLSv1.2 TLSv1.3;
+
+      location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+      }
+
+      location / {
+        default_type application/json;
+        return 200 '{"app":"{{ $name }}","pod":"$hostname","host":"$host","forwarded_for":"$http_x_forwarded_for","tls":"$ssl_protocol","via":"$http_via"}\n';
+      }
+    }

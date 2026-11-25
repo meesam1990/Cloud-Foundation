@@ -1,0 +1,18 @@
+# Terraform working directories and local state (state moves to TFE; it holds secrets).
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+
+# Real variable files (keep the *.example ones).
+*.tfvars
+!*.tfvars.example
+*.auto.tfvars
+
+# Provider lock files are committed for the stacks (envs/), not for reusable modules.
+modules/**/.terraform.lock.hcl
+
+.DS_Store

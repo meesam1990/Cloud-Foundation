@@ -1,0 +1,15 @@
+apps_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111"
+}
+
+# certificate_arn = "arn:aws:acm:us-west-2:111111111111:certificate/..."   # Client CA, *.dev.client.internal
+
+# services = {
+#   backend   = { callers = ["frontend"], methods = ["GET", "HEAD"] }
+#   inventory = { callers = ["frontend"], paths = ["/api/*"] }
+# }
+
+# lattice_resources = {
+#   orders-db = { dns_name = "orders.proxy-xxxx.us-west-2.rds.amazonaws.com", ports = [5432], custom_domain_name = "orders-db.dev.client.internal" }
+# }

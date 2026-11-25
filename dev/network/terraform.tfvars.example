@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars. In the test account both roles are the same account.
+
+network_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111" # or role_arn = "arn:aws:iam::111111111111:role/terraform"
+}
+
+apps_account_id = "111111111111"
+
+# organization_id = "o-xxxxxxxxxx"   # production: the service network allows only org principals
+# ipam_pool_id    = "ipam-pool-..."   # Network OU pool shared from network-prod (prod/network-ipam)

@@ -1,0 +1,26 @@
+{{- $name := include "sample-app.name" . -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+spec:
+  secretName: {{ $name }}-tls
+  duration: {{ .Values.certificate.duration }}
+  renewBefore: {{ .Values.certificate.renewBefore }}
+  commonName: {{ printf "%s.%s.svc" $name .Release.Namespace }}
+  dnsNames:
+    - {{ $name }}
+    - {{ printf "%s.%s.svc" $name .Release.Namespace }}
+    - {{ printf "%s.%s.svc.cluster.local" $name .Release.Namespace }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - server auth
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: {{ .Values.certificate.issuerName }}

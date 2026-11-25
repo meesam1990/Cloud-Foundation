@@ -1,0 +1,22 @@
+# network-prod (IPAM delegated administrator).
+account = {
+  id      = "111111111111"
+  profile = "client-network-prod"
+  # role_arn = "arn:aws:iam::111111111111:role/terraform"
+}
+
+# jira_ticket = "awsm-28"
+
+# OU ARNs from the management account. Leave out an OU (or the whole map) to create its pools
+# without sharing them yet.
+# ou_arns = {
+#   client-apps     = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-11111111"
+#   integrations   = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-22222222"
+#   oracle-apps    = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-33333333"
+#   infrastructure = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-44444444"
+#   analytics      = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-55555555"
+#   devops         = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-66666666"
+#   security       = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-77777777"
+#   network        = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-88888888"
+#   sandbox        = "arn:aws:organizations::222222222222:ou/o-abcdefghij/ou-abcd-99999999"
+# }

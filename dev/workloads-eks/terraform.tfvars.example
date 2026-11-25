@@ -1,0 +1,8 @@
+apps_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111"
+}
+
+# TFE agents instead of this machine:
+# detect_my_ip        = false
+# public_access_cidrs = ["203.0.113.0/24"]

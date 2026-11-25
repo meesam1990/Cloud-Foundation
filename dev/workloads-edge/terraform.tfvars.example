@@ -1,0 +1,11 @@
+apps_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111"
+}
+
+# Test subdomain for now; replace with the real one later. It must be delegated (NS records in
+# the parent zone pointing at the name_servers output) before the certificates can validate.
+domain_name = "awsm28-dev.example.com"
+
+# origin_certificate_exportable = true   # billed; needed for firewall TLS inspection
+# secret_recovery_window_days   = 0      # test accounts: lets you destroy and re-create quickly

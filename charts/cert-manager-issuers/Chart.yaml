@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cert-manager-issuers
+description: Internal CA for pod certificates (stand-in for the Client internal CA in dev)
+type: application
+version: 0.1.0

@@ -1,0 +1,13 @@
+# A self-signed root creates the internal CA certificate once; the CA ClusterIssuer then signs
+# the pod certificates (ALB -> pod TLS, HTML hop 4). Replace the CA with the Client internal CA
+# (or AWS Private CA through aws-privateca-issuer) when it exists: only the ClusterIssuer name
+# matters to the workloads.
+
+ca:
+  commonName: client-dev internal CA
+  organization: Client
+  secretName: client-internal-ca
+  duration: 87600h      # 10 years
+  renewBefore: 720h
+
+clusterIssuerName: client-internal

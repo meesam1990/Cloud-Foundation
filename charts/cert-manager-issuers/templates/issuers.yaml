@@ -1,0 +1,38 @@
+# cert-manager keeps a ClusterIssuer's CA secret in its own namespace (the cluster resource
+# namespace, cert-manager by default), so the CA Certificate is created there.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuerName }}-bootstrap
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.ca.secretName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  isCA: true
+  commonName: {{ .Values.ca.commonName | quote }}
+  subject:
+    organizations:
+      - {{ .Values.ca.organization | quote }}
+  secretName: {{ .Values.ca.secretName }}
+  duration: {{ .Values.ca.duration }}
+  renewBefore: {{ .Values.ca.renewBefore }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: {{ .Values.clusterIssuerName }}-bootstrap
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuerName }}
+spec:
+  ca:
+    secretName: {{ .Values.ca.secretName }}

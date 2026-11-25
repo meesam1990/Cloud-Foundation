@@ -1,0 +1,73 @@
+# Pull request checks (ADR-42 section 4): terraform fmt, terraform validate, tflint and Trivy.
+# TFE posts the speculative plan itself (VCS-driven workspaces); SonarQube runs from its own
+# GitHub app. Tags are enforced in the plan: every stack's context module fails the plan when a
+# required ADR-46 tag value is missing or invalid, and the provider default_tags apply them.
+
+name: terraform-checks
+
+on:
+  pull_request:
+    paths:
+      - "**.tf"
+      - "**.tfvars.example"
+      - "modules/context/resource-types.json"
+      - ".tflint.hcl"
+      - ".github/workflows/terraform-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fmt-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+      - name: terraform fmt
+        run: terraform fmt -recursive -check -diff
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.55.1
+      - name: tflint
+        run: |
+          tflint --init
+          tflint --recursive --format compact
+
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack:
+          - dev/tfe-access
+          - dev/network
+          - dev/workloads-network
+          - dev/workloads-edge
+          - dev/workloads-eks
+          - dev/workloads-lattice
+          - dev/workloads-platform
+          - prod/network-ipam
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+      - name: terraform validate
+        working-directory: ${{ matrix.stack }}
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy (IaC misconfiguration)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"

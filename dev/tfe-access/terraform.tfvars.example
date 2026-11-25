@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars. Bootstrap stack: use admin credentials (a local profile or the AFT
+# account baseline role), not TFE. In the test account both accounts are the same; the TFE OIDC
+# provider is then created once.
+
+network_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111" # or role_arn = "arn:aws:iam::111111111111:role/<admin-role>"
+}
+
+workloads_account = {
+  id      = "111111111111"
+  profile = "client-training-088199310111"
+}
+
+# tfe_hostname     = "tfe.client.com"
+# tfe_organization = "client"
+# tfe_project      = "aws-landing-zone"
+# permissions_boundary_arn = "arn:aws:iam::111111111111:policy/<boundary>"

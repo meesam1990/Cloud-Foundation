@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sample-app
+description: End-to-end test app (public ALB -> pod, or VPC Lattice -> internal ALB -> pod, over TLS)
+type: application
+version: 0.3.0
+appVersion: "1.27"

@@ -1,0 +1,45 @@
+image:
+  repository: public.ecr.aws/nginx/nginx
+  tag: 1.27-alpine
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+# nginx serves TLS on this port; the public ALB re-encrypts to it (HTML hop 3).
+containerPort: 8443
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+# Pod certificate from cert-manager (charts/cert-manager-issuers).
+certificate:
+  issuerName: client-internal
+  duration: 2160h       # 90 days
+  renewBefore: 360h
+
+# The ALB and its target group are created by Terraform (workloads-edge for the public ALB,
+# workloads-lattice for a service's internal ALB); the AWS Load Balancer Controller registers this
+# Service's pod IPs into that target group.
+targetGroupBinding:
+  targetGroupArn: ""
+
+# Only the public ALB's subnets may reach the pods on containerPort (needs the VPC CNI network
+# policy agent, enabled by modules/eks-cluster). Verify the readiness/liveness probes still pass
+# after enabling it; if they do not, add the node subnets to albSubnetCidrs.
+networkPolicy:
+  enabled: false
+  albSubnetCidrs: []
+
+# Service account of the pods. A Lattice caller (frontend) uses the service account bound to its
+# Pod Identity role in workloads-eks (lattice_callers), so its signed requests carry that role.
+serviceAccount:
+  create: false
+  name: ""
+
+# CA bundle for the VPC Lattice custom domains (workloads-lattice output ca_bundle_pem), mounted at
+# /etc/lattice-ca/ca.crt so callers can verify https://<service>.<env>.client.internal.
+latticeCaBundle: ""
